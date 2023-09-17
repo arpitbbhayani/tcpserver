@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 	"net"
@@ -33,8 +32,7 @@ func runRoutineTracker() {
 	ticker := time.NewTicker(1 * time.Second)
 	for {
 		select {
-		case _t := <-ticker.C:
-			fmt.Println("Ticker: ", _t)
+		case <-ticker.C:
 			log.Println("Currently running routines: ", runningRoutines)
 		}
 	}
@@ -53,6 +51,8 @@ func process(conn net.Conn) {
 	conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\nHello, World!\r\n"))
 	conn.Close()
 	Done()
+
+	// Release
 	<-sem
 }
 
@@ -69,6 +69,8 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		// Aquire
 		sem <- 1
 		go process(conn)
 		Add()

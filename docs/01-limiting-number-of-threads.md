@@ -28,7 +28,7 @@ And in the context of go channels, we will aquire by sending a value to the chan
 
 Let's see a small example of that, you can run it on [replit](https://replit.com/@ShuvojitSarkar/BufferedChannel-as-a-Semaphore)
 
-```
+```go
 package main
 
 import (
@@ -68,4 +68,34 @@ func main() {
 }
 ```
 
+## Tracking Concurrent Running Goroutines
 
+In order to debug and see if the solution actually works, we can have a thread safe int to track whenver a goroutine starts or ends. 
+
+We can accomplish that by using the [atomic](https://pkg.go.dev/sync/atomic) package. And we can spin up another go routine that will start a ticker to print the currently running goroutines.
+
+
+```go
+...
+
+var runningRoutines int
+
+func Add() {
+	atomic.AddUint32(&runningRoutines, 1)
+}
+
+func Done() {
+	atomic.AddUint32(&runningRoutines, ^uint32(0))
+}
+
+func runRoutineTracker() {
+	ticker := time.NewTicker(1 * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			log.Println("Currently running routines: ", runningRoutines)
+		}
+	}
+}
+...
+```
