@@ -1,4 +1,4 @@
-Multi-threaded TCP Server
+Multi-threaded TCP Server w/ Improvements
 ===
 
 This codebase demonstartes multi-threaded tcp server in Golang.
@@ -16,14 +16,12 @@ Fire the following commands on another terminal to simulate
 multiple concurrent requests.
 
 ```
-$ curl http://localhost:1729 &
-$ curl http://localhost:1729 &
-$ curl http://localhost:1729 &
+$ k6 run simple-test.js
 ```
 
 ## Improvements suggested by arpit at the end of video
 
-1. Limiting the number of threads
-2. Add threadpool to save on thread creation time
-3. Connection timeout
-4. Tcp backlog queue configuration
+[x] Limiting the number of threads
+[ ] Add threadpool to save on thread creation time
+[ ] Connection timeout
+[ ] Tcp backlog queue configuration
