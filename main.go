@@ -1,21 +1,43 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"net"
+	"sync/atomic"
 	"time"
 )
 
 var (
-	MAX_THREADS = 5
-	sem         = make(chan int, MAX_THREADS)
+	MAX_THREADS     = 5
+	sem             = make(chan int, MAX_THREADS)
+	runningRoutines uint32
 )
 
 func randomDelayBetween(min int, max int) {
 	rd := rand.Intn(max-min) + min
 	log.Printf("I may take %d seconds to process...\n", rd)
 	time.Sleep(time.Duration(rd) * time.Second)
+}
+
+func Add() {
+	atomic.AddUint32(&runningRoutines, 1)
+}
+
+func Done() {
+	atomic.AddUint32(&runningRoutines, ^uint32(0))
+}
+
+func runRoutineTracker() {
+	ticker := time.NewTicker(1 * time.Second)
+	for {
+		select {
+		case _t := <-ticker.C:
+			fmt.Println("Ticker: ", _t)
+			log.Println("Currently running routines: ", runningRoutines)
+		}
+	}
 }
 
 func process(conn net.Conn) {
@@ -30,6 +52,7 @@ func process(conn net.Conn) {
 
 	conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\nHello, World!\r\n"))
 	conn.Close()
+	Done()
 	<-sem
 }
 
@@ -39,6 +62,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	go runRoutineTracker()
 	for {
 		log.Println("ready to accept a new connection")
 		conn, err := listener.Accept()
@@ -47,5 +71,6 @@ func main() {
 		}
 		sem <- 1
 		go process(conn)
+		Add()
 	}
 }
