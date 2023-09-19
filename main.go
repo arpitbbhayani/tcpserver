@@ -5,12 +5,16 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 )
 
 var (
 	WORKERS_COUNT = 100
-	connChan      = make(chan net.Conn)
+	wg            sync.WaitGroup
 )
 
 func randomDelayBetween(min int, max int) {
@@ -19,7 +23,8 @@ func randomDelayBetween(min int, max int) {
 	time.Sleep(time.Duration(rd) * time.Second)
 }
 
-func process(ctx context.Context, workerId int) {
+func process(ctx context.Context, workerId int, connChan chan net.Conn) {
+	defer wg.Done()
 	log.Printf("Worker %d on duty!\n", workerId)
 	for {
 		select {
@@ -37,27 +42,43 @@ func process(ctx context.Context, workerId int) {
 
 			break
 		case <-ctx.Done():
-			log.Println("Worker dying, bye")
+			log.Printf("[%d] Worker dying, bye", workerId)
 			return
 		}
 	}
 }
 
 func main() {
+	wg.Add(WORKERS_COUNT)
 	listener, err := net.Listen("tcp", ":1729")
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	connChan := make(chan net.Conn)
+	defer close(connChan)
+
 	ctx, cancelWorkers := context.WithCancel(context.TODO())
 	defer cancelWorkers()
 
-	go func(ctx context.Context) {
+	sigC := make(chan os.Signal)
+	signal.Notify(sigC, syscall.SIGINT, syscall.SIGABRT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	go func() {
+		<-sigC
+		cancelWorkers()
+		wg.Wait()
+
+		log.Println("Exiting..")
+		os.Exit(0)
+	}()
+
+	go func(ctx context.Context, c chan net.Conn) {
 		// Start workers
 		for i := 0; i < WORKERS_COUNT; i++ {
-			go process(ctx, i)
+			go process(ctx, i, c)
 		}
-	}(ctx)
+	}(ctx, connChan)
 
 	for {
 		log.Println("ready to accept a new connection")
@@ -68,4 +89,5 @@ func main() {
 
 		connChan <- conn
 	}
+
 }
