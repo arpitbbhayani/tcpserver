@@ -52,12 +52,12 @@ func main() {
 	ctx, cancelWorkers := context.WithCancel(context.TODO())
 	defer cancelWorkers()
 
-	go (func(ctx context.Context) {
+	go func(ctx context.Context) {
 		// Start workers
 		for i := 0; i < WORKERS_COUNT; i++ {
 			go process(ctx, i)
 		}
-	})(ctx)
+	}(ctx)
 
 	for {
 		log.Println("ready to accept a new connection")
