@@ -1,18 +1,18 @@
-# Limiting number of threads
+# Limiting the number of threads
 
 ## Why do we need to do this?
 
-Becaue of the `go` keyword, the tasks are instantly offloaded to a seperate goroutine, thus the tcp server currenlty has negligible overhead to accept a request and can handle a lots of connections coming in. 
+Because of the `go` keyword, the tasks are instantly offloaded to a separate goroutine, thus the tcp server currently has negligible overhead to accept a request and can handle a lot of connections coming in. 
 
-Go routines are very lightweight, can a lot of them can be spawed, however even they come with a cost, add a lot of them up and you can easily run of our resources. 
+Go routines are very lightweight, can a lot of them can be spawed, however even they come with a cost, add a lot of them up and you can easily run out of resources. 
 
-In such a scenario, our application will panic and die. Possibly also severing ties to all the connections which were accepted but not served yet. 
+In such a scenario, our application will panic and die. Possibly also severing ties to all the connections that were accepted but not served yet. 
 
 ## Possible Solution
 
 A solution would be to give up a bit of the performance and let some requests get accepted a bit later. We can do that by limiting the number of threads; in our case go routines. 
 
-We can set a max cap to a calibrated number. So that  at a certain point in time we only have N amount of goroutines running. And at that moment if a new request comes in, they have to wait.
+We can set a max cap to a calibrated number. So that  at a certain point in time, we only have N amount of goroutines running. And at that moment if a new request comes in, they have to wait.
 
 
 ## Implementation
@@ -22,9 +22,9 @@ We can set a max cap to a calibrated number. So that  at a certain point in time
 When a buffered channel is full, it does not let more items to be sent until a slot gets freed up.
 More on buffered channels [here](https://www.geeksforgeeks.org/buffered-channel-in-golang/)
 
-We can utilise that feature to our advantage, and implement a [counting semaphore](https://www.geeksforgeeks.org/semaphores-in-process-synchronization/). If we keep pushing to a semaphore, and the semaphore is full, the next push will be blocked until one of the aquirees releases. 
+We can utilize that feature to our advantage, and implement a [counting semaphore](https://www.geeksforgeeks.org/semaphores-in-process-synchronization/). If we keep pushing to a semaphore, and the semaphore is full, the next push will be blocked until one of the acquirers releases. 
 
-And in the context of go channels, we will aquire by sending a value to the channel and release by reading a value from it.
+And in the context of go channels, we will acquire by sending a value to the channel and release by reading a value from it.
 
 Let's see a small example of that, you can run it on [replit](https://replit.com/@ShuvojitSarkar/BufferedChannel-as-a-Semaphore)
 
@@ -70,7 +70,7 @@ func main() {
 
 ## Tracking Concurrent Running Goroutines
 
-In order to debug and see if the solution actually works, we can have a thread safe int to track whenver a goroutine starts or ends. 
+In order to debug and see if the solution actually works, we can have a thread-safe int to track whenever a goroutine starts or ends. 
 
 We can accomplish that by using the [atomic](https://pkg.go.dev/sync/atomic) package. And we can spin up another go routine that will start a ticker to print the currently running goroutines.
 
