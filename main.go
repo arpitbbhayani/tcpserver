@@ -9,9 +9,7 @@ import (
 )
 
 var (
-	MAX_THREADS   = 100
 	WORKERS_COUNT = 100
-	sem           = make(chan int, MAX_THREADS)
 	connChan      = make(chan net.Conn)
 )
 
@@ -37,8 +35,6 @@ func process(ctx context.Context, workerId int) {
 			conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\nHello, World!\r\n"))
 			conn.Close()
 
-			// Release
-			<-sem
 			break
 		case <-ctx.Done():
 			log.Println("Worker dying, bye")
@@ -70,8 +66,6 @@ func main() {
 			log.Fatal(err)
 		}
 
-		// Aquire
-		sem <- 1
 		connChan <- conn
 	}
 }
