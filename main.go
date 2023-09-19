@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"math/rand"
 	"net"
@@ -8,8 +9,10 @@ import (
 )
 
 var (
-	MAX_THREADS = 5
-	sem         = make(chan int, MAX_THREADS)
+	MAX_THREADS   = 100
+	WORKERS_COUNT = 100
+	sem           = make(chan int, MAX_THREADS)
+	connChan      = make(chan net.Conn)
 )
 
 func randomDelayBetween(min int, max int) {
@@ -18,21 +21,30 @@ func randomDelayBetween(min int, max int) {
 	time.Sleep(time.Duration(rd) * time.Second)
 }
 
-func process(conn net.Conn) {
-	buf := make([]byte, 1024)
-	_, err := conn.Read(buf)
-	if err != nil {
-		log.Fatal(err)
+func process(ctx context.Context, workerId int) {
+	log.Printf("Worker %d on duty!\n", workerId)
+	for {
+		select {
+		case conn := <-connChan:
+			buf := make([]byte, 1024)
+			_, err := conn.Read(buf)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			randomDelayBetween(1, 2)
+			log.Printf("[%d] processing the request", workerId)
+			conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\nHello, World!\r\n"))
+			conn.Close()
+
+			// Release
+			<-sem
+			break
+		case <-ctx.Done():
+			log.Println("Worker dying, bye")
+			return
+		}
 	}
-
-	randomDelayBetween(1, 10)
-	log.Println("processing the request")
-
-	conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\nHello, World!\r\n"))
-	conn.Close()
-
-	// Release
-	<-sem
 }
 
 func main() {
@@ -40,6 +52,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	ctx, cancelWorkers := context.WithCancel(context.TODO())
+	defer cancelWorkers()
+
+	go (func(ctx context.Context) {
+		// Start workers
+		for i := 0; i < WORKERS_COUNT; i++ {
+			go process(ctx, i)
+		}
+	})(ctx)
 
 	for {
 		log.Println("ready to accept a new connection")
@@ -50,6 +72,6 @@ func main() {
 
 		// Aquire
 		sem <- 1
-		go process(conn)
+		connChan <- conn
 	}
 }
